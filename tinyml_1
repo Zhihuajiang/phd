@@ -1,0 +1,185 @@
+#generate a database
+
+import tensorflow as tf
+
+# numpy is a math library
+import numpy as np
+
+# matplotlib is a graph library
+import matplotlib.pyplot as plt
+
+# math is python's math library
+import math
+
+# datapoints=1000
+SAMPLES = 1000
+SEED = 1337
+
+# random number genernation in tensorflow(tf) in seed
+# np in numpy library
+np.random.seed(SEED)
+tf.random.set_seed(SEED)
+
+#generate a uniformly distributed set of random numbers in the range from 0-2n, which covers a complete sine wave oscillation
+x_values = np.random.uniform(low=0, high=2*math.pi, size=SAMPLES)
+
+#shuffle the values to guarantee they are not in order
+np.random.shuffle(x_values)
+
+#calculate the corresponding sine values
+y_values = np.sin(x_values)
+
+#add small random number to each y
+y_values +=0.1*np.random.randn(*y_values.shape)
+plt.plot(x_values, y_values, 'b.')
+plt.show()
+
+#split the data
+
+TRAIN_SPLIT = int(0.6 * SAMPLES)
+TEST_SPLIT = int(0.2 * SAMPLES + TRAIN_SPLIT)
+
+x_train, x_validate, x_test = np.split(x_values, [TRAIN_SPLIT, TEST_SPLIT])
+y_train, y_validate, y_test = np.split(y_values, [TRAIN_SPLIT, TEST_SPLIT])
+
+#double check that the splits add up correct;u
+
+assert(x_train.size + x_validate.size + x_test.size) == SAMPLES
+
+#plot the data in each partition in different colors
+plt.plot(x_train, y_train,'b.', label='Train')
+plt.plot(x_validate, y_validate, 'y.', label='Validate')
+plt.plot(x_test, y_test, 'r.' , label='Test')
+plt.legend()
+plt.show()
+
+# use keras to creat a simple model architectture
+from tensorflow.keras import layers
+model_1 = tf.keras.Sequential()
+
+#first layer takes a scalar input and feeds it through to neurons, the neurons decide whether to active based on the relu activation function.
+model_1.add(layers.Dense(16, activation='relu', input_shape=(1,))) #inputshape 1dimension
+
+#final layer is a single neuron, since the output is a single value
+#the activation numbers from the first layer will be fed as inputs to our second layer, whcih is defined in the following :
+model_1.add(layers.Dense(1))
+
+#compile the model using a standard optimizer and loss function for regression
+model_1.compile(optimizer='rmsprop', loss='mse', metrics=['mae'])
+#print a summary of model's architecture
+model_1.summary()
+
+
+#this table shows the layers of the network, their output shapes, and their numbers of parameters. The size of network-how much menory it takes up.
+#para: total number of weight and bias
+
+
+#training data
+#to train a model in keras call its fit()method, passing all of the data and some other important arguement.
+history_1 = model_1.fit(x_train, y_train, epochs=1000, batch_size=16,
+                        validation_data=(x_validate, y_validate))
+
+#graphing the history
+loss = history_1.history['loss']
+val_loss = history_1.history['val_loss']
+epochs = range(1,len(loss) + 1)
+
+plt.plot(epochs, loss, 'g.', label='training loss')
+plt.plot(epochs, val_loss,'b.',label='validation loss')
+plt.title('Training and validation loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
+
+# exclude the first few epochs so that the graph is easier to read
+
+SKIP = 100
+
+plt.plot(epochs[SKIP:], loss[SKIP:], 'g.', label='training loss')
+plt.plot(epochs[SKIP:], val_loss[SKIP:], 'b.', label='validation loss')
+plt.title('training and validation loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
+
+#DRAW A GRAPH OF MEAN ABSOLUTE ERROR, WHICH IS ANOTHER WAY OF MEASURRING THE AMOUNT OF ERROR IN THE PREDICTION
+
+mae = history_1.history['mae']
+val_mae = history_1.history['val_mae']
+
+plt.plot(epochs[SKIP:], mae[SKIP:], 'g.', label='training MAE')
+plt.plot(epochs[SKIP:], val_mae[SKIP:], 'b.', label='validation mae')
+plt.title('training and validation mean absolute error')
+plt.xlabel('Epochs')
+plt.ylabel('MAE')
+plt.legend()
+plt.show()
+
+# now using the model to make predictions from our validation data
+predictions = model_1.predict(x_train)
+
+#plot the prediction along with the test data
+plt.clf()
+plt.title('Training data predicted vs actual values')
+plt.plot(x_test, y_test, 'b.', label='Actual')
+plt.plot(x_train, predictions, 'r.', label='Predicted')
+plt.legend()
+plt.show()
+
+#improing the model. add another layer of neuron.
+
+model_2 = tf.keras.Sequential()
+
+model_2.add(layers.Dense(16, activation='relu', input_shape=(1,)))
+model_2.add(layers.Dense(16, activation='relu'))
+
+model_2.add(layers.Dense(1))
+
+#compile the model using a standard optimizer and loss function for regression
+model_2.compile(optimizer='rmsprop', loss='mse', metrics=['mae'])
+#print a summary of model's architecture
+model_2.summary()
+
+history_2 = model_2.fit(x_train, y_train, epochs=600, batch_size=16,
+                        validation_data=(x_validate, y_validate))
+
+SKIP = 100
+
+plt.clf() #clear the current figure
+plt.plot(epochs[SKIP:], loss[SKIP:], 'g.', label='training loss')
+plt.plot(epochs[SKIP:], val_loss[SKIP:], 'b.', label='validation loss')
+plt.title('training and validation loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
+plt.show()
+
+plt.clf
+mae = history_2.history['mae']
+val_mae = history_2.history['val_mae']
+
+plt.plot(epochs[SKIP:], mae[SKIP:], 'g.', label='training MAE')
+plt.plot(epochs[SKIP:], val_mae[SKIP:], 'b.', label='validation mae')
+plt.title('training and validation mean absolute error')
+plt.xlabel('Epochs')
+plt.ylabel('MAE')
+plt.legend()
+plt.show()
+
+#testing.
+#calculate and print the loss on the test dataset
+loss = model_2.evaluate(x_test, y_test)
+
+#make the predictions based on the testing data
+predictions = model_2.predict(x_test)
+
+#graph the predictions aginst the actual values
+
+plt.clf()
+plt.title('comparison of predictions and actual values')
+plt.plot(x_test, y_test, 'b.', label='actual')
+plt.plot(x_test, predictions, 'r.', label='Predicted')
+plt.legend()
+plt.show()
